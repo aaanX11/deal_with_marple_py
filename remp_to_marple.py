@@ -73,6 +73,7 @@ def x_edges_loop():
 
     return idx
 
+
 def y_edges_loop():
 
     # returns (or caches):
@@ -190,7 +191,11 @@ def x_faces_loop():
                     # orientation (yz):
                     # p1 -> p4 -> -p3 -> -p2
 
-                    x_faces_edges[idx] = (p1_i, p4_i, p3_i, p2_i)
+                    x_faces_edges[idx] = (
+                        x_edges_count + p1_i,
+                        x_edges_count + y_edges_count + p4_i,
+                        x_edges_count + p3_i,
+                        x_edges_count + y_edges_count + p2_i)
                     idx += 1
 
     np.save("x_faces", x_faces)
@@ -245,7 +250,11 @@ def y_faces_loop():
                     while (ix + 1, iy, iz) != tuple(z_edges[p4_i]):
                         p4_i += 1
 
-                    y_faces_edges[idx] = (p1_i, p4_i, p3_i, p2_i)
+                    y_faces_edges[idx] = (
+                        p1_i,
+                        x_edges_count + y_edges_count + p4_i,
+                        p3_i,
+                        x_edges_count + y_edges_count + p2_i)
                     idx += 1
 
     np.save("y_faces", y_faces)
@@ -295,7 +304,6 @@ def z_faces_loop():
                         p3_i += 1
 
                     p2_i = y_edges_idx[ix, iy]
-                    print(y_edges[20:28])
                     while (ix, iy, iz) != tuple(y_edges[p2_i]):
                         p2_i += 1
 
@@ -303,7 +311,12 @@ def z_faces_loop():
                     while (ix + 1, iy, iz) != tuple(y_edges[p4_i]):
                         p4_i += 1
 
-                    z_faces_edges[idx] = (p1_i, p4_i, p3_i, p2_i)
+                    z_faces_edges[idx] = (
+                        p1_i,
+                        x_edges_count + p4_i,
+                        p3_i,
+                        x_edges_count + p2_i
+                    )
                     idx += 1
 
     np.save("z_faces", z_faces)
@@ -327,9 +340,9 @@ def write_region_geo_2(fn):
 
     # TODO: should write to file
     # returns (or caches):
-    idx = 0
-    volumes = np.zeros((nonzero_cells_count + nx * ny), dtype=(np.uint16, 3))
-    volumes_faces = np.zeros((nonzero_cells_count + nx * ny + ny * nz + nx * nz), dtype=(np.uint16, 6))
+    ## idx = 0
+    ##volumes = np.zeros((nonzero_cells_count + nx * ny), dtype=(np.uint16, 3))
+    ##volumes_faces = np.zeros((nonzero_cells_count + nx * ny + ny * nz + nx * nz), dtype=(np.uint16, 6))
 
     # uses:
     x_faces_idx = np.load("x_faces_idx.npy")
@@ -339,11 +352,23 @@ def write_region_geo_2(fn):
     z_faces_idx = np.load("z_faces_idx.npy")
     z_faces = np.load("z_faces.npy")
 
+    faces_count = x_faces_count + y_faces_count + z_faces_count
+    fp = open('test.mrp', 'a')
+    fp.write('{} {}'.format(
+        nonzero_cells_count, faces_count
+    ))
+    fp.write('\n')
+    for i in range(0, 6*nonzero_cells_count, 6):
+        fp.write('{}'.format(i))
+        fp.write('\n')
+    fp.write('{}'.format(6*nonzero_cells_count))
+    fp.write('\n')
     for ix in range(nx):
         for iy in range(ny):
             for iz in range(nz):
                 if not space[ix, iy, iz]:
-                    volumes[idx] = (ix, iy, iz)
+                    ## volumes[idx] = (ix, iy, iz)
+
                     # volume (ix, iy, iz) has faces:
                     # (ix, iy, iz), (ix+1, iy, iz) from x-faces etc
                     p1_i = x_faces_idx[ix, iy]
@@ -368,11 +393,30 @@ def write_region_geo_2(fn):
 
                     p6_i = p3_i + 1
                     # orientation: p1, p2, p3, -p4, -p5, - p6
-                    volumes_faces[idx] = (p1_i, p2_i, p3_i, p4_i, p5_i, p6_i)
-                    idx += 1
+                    ##volumes_faces[idx] = \
+                    tu = (
+                        p1_i,
+                        x_faces_count + p2_i,
+                        x_faces_count + y_faces_count + p3_i,
+                        p4_i,
+                        x_faces_count + p5_i,
+                        x_faces_count + y_faces_count + p6_i
+                    )
+                    ## idx += 1
+                    fp.write('{} {} {} {} {} {}'.format(
+                        tu[0],
+                        tu[1],
+                        tu[2],
+                        MIN_INTEGER + tu[3],
+                        MIN_INTEGER + tu[4],
+                        MIN_INTEGER + tu[5]
+                    ))
+                    fp.write('\n')
 
-    del volumes
-    del volumes_faces
+    fp.write('\n')
+    fp.close()
+    ## del volumes
+    ## del volumes_faces
 
     del x_faces_idx
     del x_faces
@@ -388,21 +432,19 @@ def write_region_geo_2(fn):
 
 
 def read_grd(fn):
-    # TODO: should work
 
-    xx = []
-    yy = []
-    zz = []
     with open(fn) as fp:
-        lines = fp.readlines()
-        xx = map(float, lines[3].strip().split())
-        yy = map(float, lines[5].strip().split())
-        zz = map(float, lines[7].strip().split())
-    xx = list(xx)
-    yy = list(yy)
-    zz = list(zz)
+        for _ in range(6):
+            fp.readline()
+        xx = list(map(float, fp.readline().strip().split()))
+        for _ in range(2):
+            fp.readline()
+        yy = list(map(float, fp.readline().strip().split()))
+        for _ in range(2):
+            fp.readline()
+        zz = list(map(float, fp.readline().strip().split()))
 
-    return x, y, z
+    return xx, yy, zz
 
 
 def read_grd_dim(fn):
@@ -427,15 +469,92 @@ def read_cel(fn):
 
 def write_region_geo_3(fn, grd_fn):
     xx, yy, zz = read_grd(grd_fn)
-    # write_pts(fn)
+    pts = np.load("pts.npy")
+    fp = open('test.mrp', 'a')
+
+    for p in pts[:pts_count]:
+        fp.write('({}, {}, {})'.format(xx[p[0]], yy[p[1]], zz[p[2]]))
+        fp.write('\n')
+    fp.write('\n')
+    fp.close()
 
 
 def write_edges(fn):
-    pass
+    x_edges_vertices = np.load("x_edges_vertices.npy")
+    y_edges_vertices = np.load("y_edges_vertices.npy")
+    z_edges_vertices = np.load("z_edges_vertices.npy")
+
+    edges_count = x_edges_count + y_edges_count + z_edges_count
+    fp = open('test.mrp', 'a')
+    fp.write('{} {}'.format(
+        edges_count, pts_count
+    ))
+    fp.write('\n')
+    for i in range(0, 2*edges_count, 2):
+        fp.write('{}'.format(i))
+        fp.write('\n')
+    fp.write('{}'.format(2*edges_count))
+    fp.write('\n')
+    for i in range(x_edges_count):
+        fp.write('{} {}'.format(MIN_INTEGER + x_edges_vertices[i][0], x_edges_vertices[i][1]))
+        fp.write('\n')
+    for i in range(y_edges_count):
+        fp.write('{} {}'.format(MIN_INTEGER + y_edges_vertices[i][0], y_edges_vertices[i][1]))
+        fp.write('\n')
+    for i in range(z_edges_count):
+        fp.write('{} {}'.format(MIN_INTEGER + z_edges_vertices[i][0], z_edges_vertices[i][1]))
+        fp.write('\n')
+    fp.write('\n')
+    fp.close()
+
+    del x_edges_vertices
+    del y_edges_vertices
+    del z_edges_vertices
 
 
 def write_faces(fn):
-    pass
+    x_faces_edges = np.load("x_faces_edges.npy")
+    y_faces_edges = np.load("y_faces_edges.npy")
+    z_faces_edges = np.load("z_faces_edges.npy")
+
+    edges_count = x_edges_count + y_edges_count + z_edges_count
+    faces_count = x_faces_count + y_faces_count + z_faces_count
+    fp = open('test.mrp', 'a')
+    fp.write('{} {}'.format(
+        faces_count, edges_count
+    ))
+    fp.write('\n')
+    for i in range(0, 4 * faces_count, 4):
+        fp.write('{}'.format(i))
+        fp.write('\n')
+    fp.write('{}'.format(4 * faces_count))
+    fp.write('\n')
+    for i in range(x_faces_count):
+        fp.write('{} {} {} {}'.format(
+            x_faces_edges[i][0],
+            x_faces_edges[i][1],
+            MIN_INTEGER + x_faces_edges[i][2],
+            MIN_INTEGER + x_faces_edges[i][3]))
+        fp.write('\n')
+    for i in range(y_faces_count):
+        fp.write('{} {} {} {}'.format(
+            y_faces_edges[i][0],
+            y_faces_edges[i][1],
+            MIN_INTEGER + y_faces_edges[i][2],
+            MIN_INTEGER + y_faces_edges[i][3]))
+        fp.write('\n')
+    for i in range(z_faces_count):
+        fp.write('{} {} {} {}'.format(
+            z_faces_edges[i][0],
+            z_faces_edges[i][1],
+            MIN_INTEGER + z_faces_edges[i][2],
+            MIN_INTEGER + z_faces_edges[i][3]))
+        fp.write('\n')
+    fp.write('\n')
+    fp.close()
+    del x_faces_edges
+    del y_faces_edges
+    del z_faces_edges
 
 
 def write_region_geo_1(fn):
