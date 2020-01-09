@@ -1,6 +1,7 @@
 import numpy as np
 from collections import OrderedDict
 
+from remp_to_marple import write_remp_region_geo, write_object_boundary
 
 MAX_INT = 2147483648
 MAX_DIM = 3
@@ -191,6 +192,39 @@ class Region:
                 se = SuperElement(dim, name, elements)
                 self.super_elements.append(se)
 
+    def write(self, fn):
+        write_remp_region_geo(r'DEFAULT.GRD', r'DEFAULT.CEL', r'test.mrp')
+        fp = open(fn, 'a')
+        fp.write('0 1 0 0 0 0 0\n-1\n-1\n')
+        fp.write('{} {}\n'.format(self.label, self.name))
+        fp.write('{}\n'.format(len(self.markings)))
+        for m in self.markings:
+            fp.write('{} {}\n'.format(m.name, len(m.labels)))
+        if len(self.markings) > 0:
+            # TODO: what is going on here??
+            fp.write('0\n0\n0\n1\n')
+            fp.write('1\n')
+            fp.write('1\n')
+
+        # no boundary conditions on points
+        dim = 0
+        fp.write('0\n0\n\n')
+
+        # no boundary conditions on edges
+        dim = 1
+        fp.write('0\n0\n\n')
+        fp.close()
+
+        # faces have boundary conditions
+        dim = 2
+        write_boundaries()
+
+        fp.open(fn, 'a')
+        # no boundary conditions on volumes
+        fp.write('0\n0\n\n')
+
+        fp.close()
+
 
 def read_mrp_file(fp):
     read_symmetry(fp)
@@ -198,6 +232,18 @@ def read_mrp_file(fp):
     return read_regions(fp)
 
 
+def write_symmetry(fn):
+    pass
+
+
+def write_mrp_file(fn, region):
+    fp = open(fn)
+    write_symmetry()
+    region.write(fn)
+
+
 if __name__ == '__main__':
     f = open('mesh.mrp')
-    read_mrp_file(f)
+    regions_ = read_mrp_file(f)
+
+    write_mrp_file('test.mrp', regions_[0])
