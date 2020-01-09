@@ -11,7 +11,7 @@ MIN_INTEGER = -2147483648
 
 def points_loop(space, counts):
 
-    volumes_count = counts[-1]
+    volumes_count = counts[3]
     nx, ny, nz = space.shape
     nx -= 2
     ny -= 2
@@ -42,7 +42,7 @@ def points_loop(space, counts):
 
 def x_edges_loop(space, counts):
 
-    volumes_count = counts[-1]
+    volumes_count = counts[3]
     nx, ny, nz = space.shape
     nx -= 2
     ny -= 2
@@ -90,7 +90,7 @@ def x_edges_loop(space, counts):
 
 
 def y_edges_loop(space, counts):
-    volumes_count = counts[-1]
+    volumes_count = counts[3]
     nx, ny, nz = space.shape
     nx -= 2
     ny -= 2
@@ -136,7 +136,7 @@ def y_edges_loop(space, counts):
 
 
 def z_edges_loop(space, counts):
-    volumes_count = counts[-1]
+    volumes_count = counts[3]
     nx, ny, nz = space.shape
     nx -= 2
     ny -= 2
@@ -180,7 +180,7 @@ def z_edges_loop(space, counts):
 
 
 def x_faces_loop(space, counts):
-    volumes_count = counts[-1]
+    volumes_count = counts[3]
     nx, ny, nz = space.shape
     nx -= 2
     ny -= 2
@@ -192,9 +192,10 @@ def x_faces_loop(space, counts):
     x_faces_idx = np.zeros((nx + 1, ny + 1), dtype=np.int32)
     x_faces = np.zeros((volumes_count + ny * nz), dtype=(np.uint16, 3))
     x_faces_edges = np.zeros((volumes_count + nx * ny + ny * nz + nx * nz), dtype=(np.uint16, 4))
+
     xmin_boundary = np.zeros((ny * nz), dtype=np.uint16)
     xmax_boundary = np.zeros((ny * nz), dtype=np.uint16)
-    object_boundary = np.zeros((1 + ny * nz * nz - volumes_count + nx * ny + ny * nz + nx * nz), dtype=np.uint16)
+    object_boundary = np.zeros((ny * nz * nz - volumes_count + nx * ny + ny * nz + nx * nz), dtype=np.uint16)
 
     # uses:
     y_edges_idx = np.load("y_edges_idx.npy")
@@ -215,7 +216,8 @@ def x_faces_loop(space, counts):
                         xmax_boundary[idx_xmax] = idx
                         idx_xmax += 1
                     elif space[ix:ix + 1, iy + 1, iz + 1].any():
-                        object_boundary[1 + idx_obj_b] = idx
+                        object_boundary[idx_obj_b] = idx
+                        idx_obj_b += 1
                     x_faces[idx] = (ix, iy, iz)
                     # x-face (ix, iy, iz) has edges
                     # (ix, iy, iz), (ix, iy, iz+1) from y-edges,
@@ -260,16 +262,20 @@ def x_faces_loop(space, counts):
     del z_edges
 
     counts[2][0] = idx
+    counts[4][0] = idx_xmin
+    counts[4][1] = idx_xmax
+    counts[4][6] += idx_obj_b
 
 
 def y_faces_loop(space, counts):
 
-    volumes_count = counts[-1]
+    volumes_count = counts[3]
     nx, ny, nz = space.shape
     nx -= 2
     ny -= 2
     nz -= 2
     x_edges_count, y_edges_count, z_edges_count = counts[1]
+    x_faces_count, _, _ = counts[2]
 
     # returns (or caches):
     idx = 0
@@ -279,6 +285,7 @@ def y_faces_loop(space, counts):
 
     ymin_boundary = np.zeros((ny * nz), dtype=np.uint16)
     ymax_boundary = np.zeros((ny * nz), dtype=np.uint16)
+    object_boundary = np.zeros((ny * nz * nz - volumes_count + nx * ny + ny * nz + nx * nz), dtype=np.uint16)
 
     # uses:
     x_edges_idx = np.load("x_edges_idx.npy")
@@ -287,6 +294,7 @@ def y_faces_loop(space, counts):
     z_edges = np.load("z_edges.npy")
 
     idx_ymin = idx_ymax = 0
+    idx_obj_b = counts[4][6]
     for ix in range(nx):
         for iy in range(ny + 1):
             y_faces_idx[ix, iy] = idx
@@ -298,6 +306,9 @@ def y_faces_loop(space, counts):
                     elif iy == ny:
                         ymax_boundary[idx_ymax] = idx
                         idx_ymax += 1
+                    elif space[ix + 1, iy:iy + 1, iz + 1].any():
+                        object_boundary[idx_obj_b] = x_faces_count + idx
+                        idx_obj_b += 1
                     y_faces[idx] = (ix, iy, iz)
                     # y-face (ix, iy, iz) has edges
                     # (ix, iy, iz), (ix, iy, iz+1) from x-edges,
@@ -340,15 +351,20 @@ def y_faces_loop(space, counts):
     del z_edges
 
     counts[2][1] = idx
+    counts[4][2] = idx_ymin
+    counts[4][3] = idx_ymax
+    counts[4][6] += idx_obj_b
 
 
 def z_faces_loop(space, counts):
-    volumes_count = counts[-1]
+    volumes_count = counts[3]
     nx, ny, nz = space.shape
     nx -= 2
     ny -= 2
     nz -= 2
     x_edges_count, y_edges_count, z_edges_count = counts[1]
+    x_faces_count, y_faces_count, _ = counts[2]
+
     # returns (or caches):
     idx = 0
     z_faces_idx = np.zeros((nx + 1, ny + 1), dtype=np.int32)
@@ -357,6 +373,7 @@ def z_faces_loop(space, counts):
 
     zmin_boundary = np.zeros((ny * nz), dtype=np.uint16)
     zmax_boundary = np.zeros((ny * nz), dtype=np.uint16)
+    object_boundary = np.zeros((ny * nz * nz - volumes_count + nx * ny + ny * nz + nx * nz), dtype=np.uint16)
 
     # uses:
     x_edges_idx = np.load("x_edges_idx.npy")
@@ -365,6 +382,7 @@ def z_faces_loop(space, counts):
     y_edges = np.load("y_edges.npy")
 
     idx_zmin = idx_zmax = 0
+    idx_obj_b = counts[4][6]
     for ix in range(nx):
         for iy in range(ny):
             z_faces_idx[ix, iy] = idx
@@ -376,6 +394,9 @@ def z_faces_loop(space, counts):
                     elif iz == nz:
                         zmax_boundary[idx_zmax] = idx
                         idx_zmax += 1
+                    elif space[ix + 1, iy + 1, iz:iz + 1].any():
+                        object_boundary[idx_obj_b] = x_faces_count + y_faces_count + idx
+                        idx_obj_b += 1
 
                     z_faces[idx] = (ix, iy, iz)
                     # z-face (ix, iy, iz) has edges
@@ -422,10 +443,13 @@ def z_faces_loop(space, counts):
     del y_edges
 
     counts[2][2] = idx
+    counts[4][4] = idx_zmin
+    counts[4][5] = idx_zmax
+    counts[4][6] += idx_obj_b
 
 
 def write_region_geo_2(fn, space, counts):
-    """def volumes_loop():"""
+    """def volumes_loop(space, counts):"""
 
     volumes_count = counts[3]
     nx, ny, nz = space.shape
@@ -563,21 +587,21 @@ def read_cel(fn, n):
     return li
 
 
-def write_region_geo_3(fn, grd_fn, pts_cnt):
+def write_region_geo_3(fn, grd_fn, counts):
     xx, yy, zz = read_grd(grd_fn)
     pts = np.load("pts.npy")
     fp = open(fn, 'a')
 
-    for p in pts[:pts_cnt]:
+    for p in pts[:counts[0]]:
         fp.write('({}, {}, {})'.format(xx[p[0]], yy[p[1]], zz[p[2]]))
         fp.write('\n')
     fp.write('\n')
     fp.close()
 
 
-def write_edges(fn, pts_cnt, edges_cnt):
-    pts_count = pts_cnt
-    [x_edges_count, y_edges_count, z_edges_count] = edges_cnt
+def write_edges(fn, counts):
+    pts_count = counts[0]
+    [x_edges_count, y_edges_count, z_edges_count] = counts[1]
 
     x_edges_vertices = np.load("x_edges_vertices.npy")
     y_edges_vertices = np.load("y_edges_vertices.npy")
@@ -611,9 +635,9 @@ def write_edges(fn, pts_cnt, edges_cnt):
     del z_edges_vertices
 
 
-def write_faces(fn, edges_cnt, faces_cnt):
-    [x_edges_count, y_edges_count, z_edges_count] = edges_cnt
-    [x_faces_count, y_faces_count, z_faces_count] = faces_cnt
+def write_faces(fn, counts):
+    [x_edges_count, y_edges_count, z_edges_count] = counts[1]
+    [x_faces_count, y_faces_count, z_faces_count] = counts[2]
     x_faces_edges = np.load("x_faces_edges.npy")
     y_faces_edges = np.load("y_faces_edges.npy")
     z_faces_edges = np.load("z_faces_edges.npy")
@@ -658,18 +682,18 @@ def write_faces(fn, edges_cnt, faces_cnt):
     del z_faces_edges
 
 
-def write_region_geo_1(fn):
-    write_edges(fn)
-    write_faces(fn)
+def write_region_geo_1(fn, counts):
+    write_edges(fn, counts)
+    write_faces(fn, counts)
 
 
-def write_region_geo(fn, pts_cnt, edges_cnt, faces_cnt, volumes_cnt):
-    pts_count = pts_cnt
-    [x_edges_count, y_edges_count, z_edges_count] = edges_cnt
-    [x_faces_count, y_faces_count, z_faces_count] = faces_cnt
-    volumes_count = volumes_cnt
+def write_region_geo(fn, counts):
+    pts_count = counts[0]
+    [x_edges_count, y_edges_count, z_edges_count] = counts[1]
+    [x_faces_count, y_faces_count, z_faces_count] = counts[2]
+    volumes_count = counts[3]
     fp = open(fn, 'a')
-    fp.write(MAX_DIM, '\n')
+    fp.write('{}\n'.format(MAX_DIM))
     fp.write('{} {} {} {}\n'.format(
         pts_count,
         x_edges_count + y_edges_count + z_edges_count,
@@ -687,9 +711,9 @@ def write_region_geo(fn, pts_cnt, edges_cnt, faces_cnt, volumes_cnt):
 
 def write_remp_region_geo(grd_fn, cel_fn, mesh_fn):
     nx, ny, nz = read_grd_dim(grd_fn)
-    space_li = read_cel(cel_fn)
+    space_li = read_cel(cel_fn, nx * ny * nz)
     space = np.zeros((nx + 2, ny + 2, nz + 2), dtype=np.bool)
-    space[1:-1, 1:-1, 1:-1] = space_li
+    space[1:-1, 1:-1, 1:-1] = space_li.reshape((nx, ny, nz))
     space[0, ...] = space[1, ...]
     space[-1, ...] = space[-2, ...]
     space[:, 0, :] = space[:, 1, :]
@@ -698,55 +722,59 @@ def write_remp_region_geo(grd_fn, cel_fn, mesh_fn):
     space[..., -1] = space[..., -2]
     # TODO: space --> memmap
 
-    elems, counts = np.unique(space, return_counts=True)
+    elems, counts = np.unique(space_li, return_counts=True)
     idx_False = 0
     if elems[idx_False]:
         idx_False = 1
     volumes_count = counts[idx_False]
 
-    counts = [0, [0, 0, 0], [0, 0, 0], volumes_count]
-    points_loop(space, count)
+    counts = [0, [0, 0, 0], [0, 0, 0], volumes_count, [0]*7]
+    print("processing points")
+    points_loop(space, counts)
     gc.collect()
     print("processing edges")
-    x_edges_count = x_edges_loop()
+    x_edges_loop(space, counts)
     gc.collect()
     print("x")
-    y_edges_count = y_edges_loop()
+    y_edges_loop(space, counts)
     gc.collect()
     print("y")
-    z_edges_count = z_edges_loop()
+    z_edges_loop(space, counts)
     gc.collect()
     print("z")
     print("processing faces")
-    x_faces_count = x_faces_loop()
+    x_faces_loop(space, counts)
     gc.collect()
     print("x")
-    y_faces_count = y_faces_loop()
+    y_faces_loop(space, counts)
     gc.collect()
     print("y")
-    z_faces_count = z_faces_loop()
+    z_faces_loop(space, counts)
     gc.collect()
     print("z")
-    write_region_geo()
+    write_region_geo(mesh_fn, counts)
     print("writing edges and faces")
-    write_region_geo_1(mesh_fn)
+    write_region_geo_1(mesh_fn, counts)
     gc.collect()
     print("processing and writing volumes")
-    write_region_geo_2(mesh_fn)
+    write_region_geo_2(mesh_fn, space, counts)
     gc.collect()
     print("writing coordinates")
-    write_region_geo_3(mesh_fn, grd_fn)
+    write_region_geo_3(mesh_fn, grd_fn, counts)
     gc.collect()
 
 
-def write_boundaries(fn, faces_count, space):
+def write_boundaries(fn, counts, space):
 
     nx, ny, nz = space.shape
     nx -= 2
     ny -= 2
     nz -= 2
 
-    x_faces_count, y_faces_count, z_faces_count = faces_count
+    x_faces_count, y_faces_count, z_faces_count = counts[2]
+    xmin_faces_count, xmax_faces_count, \
+        ymin_faces_count, ymax_faces_count, \
+        zmin_faces_count, zmax_faces_count, object_faces_count = counts[4]
 
     xmin_boundary = np.load("xmin_boundary.npy")
     xmax_boundary = np.load("xmax_boundary.npy")
@@ -763,32 +791,25 @@ def write_boundaries(fn, faces_count, space):
     idx = 0
     fp.write('{}\n'.format(idx))    # xmin description starts
 
-    xmin_faces_count = ny * nz - np.sum(space[0, :, :].flatten())
     idx += xmin_faces_count
     fp.write('{}\n'.format(idx))    # ymin description starts
 
-    ymin_faces_count = nx * nz - np.sum(space[:, 0, :].flatten())
     idx += ymin_faces_count
     fp.write('{}\n'.format(idx))    # zmin description starts
 
-    zmin_faces_count = nx * ny - np.sum(space[:, :, 0].flatten())
     idx += zmin_faces_count
     fp.write('{}\n'.format(idx))
 
-    xmax_faces_count = ny * nz - np.sum(space[-1, :, :].flatten())
     idx += xmax_faces_count
     fp.write('{}\n'.format(idx))
 
-    ymax_faces_count = nx * nz - np.sum(space[:, -1, :].flatten())
     idx += ymax_faces_count
     fp.write('{}\n'.format(idx))
 
-    zmax_faces_count = nx * ny - np.sum(space[:, :, -1].flatten())
     idx += zmax_faces_count
     fp.write('{}\n\n'.format(idx))
 
-    object_faces_count = np.sum(space[:, :, -1].flatten())
-    idx += zmax_faces_count
+    idx += object_faces_count
     fp.write('{}\n\n'.format(idx))
 
     for idx in range(xmin_faces_count):
@@ -808,6 +829,9 @@ def write_boundaries(fn, faces_count, space):
     fp.write('\n')
     for idx in range(zmax_faces_count):
         fp.write('{} '.format(x_faces_count + y_faces_count + zmax_boundary[idx]))
+    fp.write('\n')
+    for idx in range(object_faces_count):
+        fp.write('{} '.format(object_boundary[idx]))
     fp.write('\n')
     fp.write('\n')
 
