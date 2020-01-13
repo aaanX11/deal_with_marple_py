@@ -591,6 +591,13 @@ def read_grd_dim(fn):
 
 def read_cel(fn, n):
     li = np.zeros((n), dtype=np.uint8)
+    fp = open(fn, 'r')
+    idx = 0
+    while idx < n:
+        lay = int(fp.readline().strip())
+        count = int(fp.readline().strip())
+        li[idx: idx + count] = lay
+        idx += count
     return li
 
 
