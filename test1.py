@@ -1,7 +1,7 @@
 import numpy as np
 from collections import OrderedDict
 
-from remp_to_marple import write_remp_region_geo, write_object_boundary
+from remp_to_marple import write_remp_region_geo, write_boundaries
 
 MAX_INT = 2147483648
 MAX_DIM = 3

@@ -6,7 +6,14 @@ import numpy as np
 MAX_DIM = 3
 MIN_INTEGER = -2147483648
 
-# TODO: check which is faster 1) tuple != tuple(np.array) or 2) np.array_equal(tuple, np.array)
+# TODO: m b store object-presence-flag for a z-pile to search in log(nz) (if object is present)  or const (if not)
+# TODO: m b alternative or additional index
+# TODO: m b numba
+
+# TODO: space --> memmap
+# TODO: counts --> dictionary
+# TODO: deco
+# TODO: test !
 
 
 def points_loop(space, counts):
@@ -195,7 +202,7 @@ def x_faces_loop(space, counts):
 
     xmin_boundary = np.zeros((ny * nz), dtype=np.uint16)
     xmax_boundary = np.zeros((ny * nz), dtype=np.uint16)
-    object_boundary = np.zeros((ny * nz * nz - volumes_count + nx * ny + ny * nz + nx * nz), dtype=np.uint16)
+    object_boundary = np.zeros((3 * nx * ny * nz - volumes_count + nx * ny + ny * nz + nx * nz), dtype=np.uint16)
 
     # uses:
     y_edges_idx = np.load("y_edges_idx.npy")
@@ -720,7 +727,6 @@ def write_remp_region_geo(grd_fn, cel_fn, mesh_fn):
     space[:, -1, :] = space[:, -2, :]
     space[..., 0] = space[..., 1]
     space[..., -1] = space[..., -2]
-    # TODO: space --> memmap
 
     elems, counts = np.unique(space_li, return_counts=True)
     idx_False = 0
