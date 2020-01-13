@@ -584,6 +584,16 @@ def read_grd_dim(fn):
 
 def read_cel(fn, n):
     li = np.zeros((n), dtype=np.uint8)
+
+    fp = open(fn, 'r')
+
+    idx = 0
+    while idx < n:
+        lay = int(fp.readline().strip())
+        cel_count = int(fp.readline().strip())
+        li[idx:idx + cel_count] = lay
+        idx += cel_count
+
     return li
 
 
@@ -766,10 +776,7 @@ def write_remp_region_geo(grd_fn, cel_fn, mesh_fn):
 
 def write_boundaries(fn, counts, space):
 
-    nx, ny, nz = space.shape
-    nx -= 2
-    ny -= 2
-    nz -= 2
+    nx, ny, nz = map(lambda x: x - 2, space.shape)
 
     x_faces_count, y_faces_count, z_faces_count = counts[2]
     xmin_faces_count, xmax_faces_count, \

@@ -1,7 +1,7 @@
 import numpy as np
 from collections import OrderedDict
 
-from remp_to_marple import write_remp_region_geo, write_object_boundary
+from remp_to_marple import write_remp_region_geo, write_boundaries
 
 MAX_INT = 2147483648
 MAX_DIM = 3
@@ -179,12 +179,18 @@ class Region:
 
         for _ in range(reg_markings_count):
             m = Marking()
-            m.read_marking_info(fp)
+            # m.read_marking_info(fp)
+            print(fp.readline())
+            fp.readline()
+            print(fp.readline())
+            print(fp.readline())
+            print(fp.readline())
             self.markings.append(m)
 
-        line = fp.readline()
         for dim in range(MAX_DIM + 1):
             line = fp.readline().strip()
+            print('dim=', dim)
+            print(line)
             element_count = int(line)
             super_elemnts_elemnts_list = read_marple_list(fp, element_count)
             for elements in super_elemnts_elemnts_list:
