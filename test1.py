@@ -225,7 +225,7 @@ class Region:
         dim = 2
         write_boundaries()
 
-        fp.open(fn, 'a')
+        fp = open(fn, 'a')
         # no boundary conditions on volumes
         fp.write('0\n0\n\n')
 
